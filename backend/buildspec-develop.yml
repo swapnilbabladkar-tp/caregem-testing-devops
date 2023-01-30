@@ -13,4 +13,4 @@ phases:
       - echo $SAM_CLI_SOURCE_BUCKET
   build:
     commands:
-      - bash backend/build_deploy.sh $CURRENT_COMMIT $PREVIOUS_COMMIT
+      - bash backend/build-deploy.sh $CURRENT_COMMIT $PREVIOUS_COMMIT
