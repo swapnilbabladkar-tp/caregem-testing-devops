@@ -14,4 +14,4 @@ phases:
       - echo $PREVIOUS_COMMIT
   build:
     commands:
-      - bash backend/build_deploy.sh $CURRENT_COMMIT $PREVIOUS_COMMIT
+      - bash backend/build-deploy.sh $CURRENT_COMMIT $PREVIOUS_COMMIT
