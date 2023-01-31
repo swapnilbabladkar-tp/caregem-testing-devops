@@ -21,11 +21,13 @@ IFS=',' read -ra changed_files_list <<< "$changed_files_array"
 # Unique entries of services 
 changed_service_list=($(echo "${changed_files_list[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
-changed_service_list=("layers")
+changed_service_list=("device-service")
 echo ${changed_service_list[@]}
 
 if echo "${changed_service_list[@]}" | grep -q "layers"; then
     echo "BUILDING ALL SERVICES"
+
+    # Run only for service and trigger functions
     pattern1="*-service"
     pattern2="*-trigger"
 
@@ -35,16 +37,13 @@ if echo "${changed_service_list[@]}" | grep -q "layers"; then
 
     # Combine the results
     folders="$folders1 $folders2"
-    echo $folders
-    changed_folders=$(echo "$folders" | sed 's/src//g' | sed 's/\.//g' | sed 's/\///g')
+    list_folders=$(echo "$folders" | sed 's/src//g' | sed 's/\.//g' | sed 's/\///g')
 
-    echo ${changed_folders[@]}
-    for service_name in ${changed_folders[@]}; do
+    for service_name in ${list_folders[@]}; do
 
         # Template file 
-        buildfile=${service_name}/${service_name}.yaml
-        ls -ltr ./src/$buildfile
-        echo $buildfile
+        buildfile=./src/${service_name}/${service_name}.yaml
+
         # Deploy all functions one-by-one
         echo "----------------------------------------------------"
         echo "| Status - Building | Function - $service_name "
@@ -55,9 +54,8 @@ if echo "${changed_service_list[@]}" | grep -q "layers"; then
         echo "-----------------------------------------------------------"
 
         # Template file
-        deployfile=${service_name}/${service_name}-config.toml
-        ls -ltr ./src/$deployfile
-        echo $deployfile
+        deployfile=./src/${service_name}/${service_name}-config.toml
+
         # Deploy all functions one-by-one
         echo "----------------------------------------------------"
         echo "| Status - Deploying | Function - $service_name "
@@ -122,8 +120,14 @@ else
 fi
 
 echo "Cleaning up build artifacts for $service_name ..."
-rm -r ./.aws-sam
-echo "Clean up completed"
+file_path="./.aws-sam"
+if [ -f "$file_path" ]; then
+  # Delete the file
+  rm -r "$file_path"
+  echo "Clean up completed"
+else
+  echo "Nothing to clean up"
+fi
 
 end=$(date +%s)
 echo "-----------------------------------------------------------"
