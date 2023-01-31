@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  APIGatewayAccessLogGroupName:
+    Type: String
+    Default: API-Gateway-Access-Logs
+  APIGatewayCloudWatchRoleName:
+    Type: String
+    Default: ApiGatewayCloudWatchRole
+  AmazonAPIGatewayRolePolicyName:
+    Type: String
+    Default: AmazonAPIGatewayPushToCloudWatchLogs
+
+Resources:
+  APIGatewayAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref APIGatewayAccessLogGroupName
+
+  APIGatewayCloudWatchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref APIGatewayCloudWatchRoleName
+      Description: Allows API Gateway to push logs to CloudWatch Logs.
+      MaxSessionDuration: 3600
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Sid: ""
+
+  AmazonAPIGatewayRolePolicy:
+    Type: AWS::IAM::Policy
+    Description: Allows API Gateway to push logs to user's account.
+    Properties:
+      PolicyName: !Ref AmazonAPIGatewayRolePolicyName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:DescribeLogGroups"
+              - "logs:DescribeLogStreams"
+              - "logs:PutLogEvents"
+              - "logs:GetLogEvents"
+              - "logs:FilterLogEvents"
+            Resource: "*"
+      Roles:
+        - !Ref APIGatewayCloudWatchRole
+
+Outputs:
+  APIGatewayAccessLogs:
+    Description: API Gateway Access Logs Arn
+    Value: !GetAtt APIGatewayAccessLogs.Arn
+
+  APIGatewayCloudWatchRole:
+    Description: API Gateway push to CloudWatch logs role
+    Value: !GetAtt APIGatewayCloudWatchRole.Arn

@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: |
+  Sets up CareGem RDS
+
+Parameters:
+  DatabaseName:
+    Default: CareGemDB
+    Type: String
+    Description: Database name
+    MinLength: 1
+    MaxLength: 30
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: >
+      Name must begin with a letter and contain only alphanumeric characters
+
+  DatabaseUser:
+    Default: dbadmin
+    Type: String
+    Description: Database admin account name
+    MinLength: 5
+    MaxLength: 16
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: >
+      Name must begin with a letter and contain only alphanumeric characters
+
+  DatabasePassword:
+    NoEcho: true
+    Type: String
+    Description: >
+      Initial Database admin account password. This will be changed and
+      managed with AWS Secrets Manager
+    MinLength: 8
+    MaxLength: 41
+    # https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Limits.html#RDS_Limits.Constraints
+    AllowedPattern: '^[^\"@]+$'
+    ConstraintDescription: >
+      The password for the master database user. This password can
+      contain any printable ASCII character except \, \", or @.
+      Must contain from 8 to 41 characters.
+
+  DatabaseSize:
+    Default: 20
+    Type: Number
+    Description: Database storage size in gigabytes (GB)
+    MinValue: 5
+    ConstraintDescription: Enter a size of at least 5 GB
+
+  DatabaseInstanceClass:
+    Default: db.t3.small
+    Type: String
+    Description: >
+      Database instance class, e.g. db.t2.small
+      Engine support: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html
+
+  VPC:
+    Description: The VPC for RDS
+    Type: String
+    Default: vpc-088c319ff921a94f7
+    # Default: vpc-059876ff41e2b81df
+
+  DBSubnets:
+    Description: Private subnets used by the RDS
+    Type: List<AWS::EC2::Subnet::Id>
+    Default: subnet-006c0f178b1bd454a, subnet-0aba239d8ad89722e
+    # Default: subnet-0f1cd30010d790895,subnet-0537e2d064f2b4c4d
+
+  EnvironmentName:
+    Description: |
+      An environment name that will be used in resource names/tags.
+      Must be unique per region. Please do not use upper case letters.
+    Type: String
+    MinLength: 2
+    AllowedPattern: '(?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*'
+    Default: prod
+    # Default: qa
+
+Resources:
+  ##########################################################################
+  # Security Groups
+  ##########################################################################
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 'app-sg'
+      VpcId: !Ref VPC
+      GroupDescription: !Sub 'App Security Group'
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-AppSecurityGroup
+
+  # adds a self-referencing rule to AppSecurityGroup
+  AppSecurityGroupSelfRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AppSecurityGroup
+      Description: !Sub 'Self reference App Security Group rule'
+      SourceSecurityGroupId: !Ref AppSecurityGroup
+      IpProtocol: -1
+
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 'rds-sg'
+      VpcId: !Ref VPC
+      GroupDescription: !Sub 'RDS DB for environment: ${EnvironmentName}'
+      SecurityGroupIngress:
+        # Allow inbound access to RDS from App SG
+        - SourceSecurityGroupId: !Ref AppSecurityGroup
+          Description: Allow inbound access from App SG
+          IpProtocol: -1
+        # Allow inbound access to RDS from EC2
+        - SourceSecurityGroupId: !Ref EC2SecurityGroup
+          Description: Allow inbound access from EC2 SG
+          IpProtocol: -1
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-RdsSecurityGroup
+
+  # adds a self-referencing rule to RdsSecurityGroup
+  RdsGroupSelfRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RdsSecurityGroup
+      Description: !Sub 'Self reference RDS Security Group rule'
+      SourceSecurityGroupId: !Ref RdsSecurityGroup
+      IpProtocol: -1
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 'ec2-sg'
+      VpcId: !Ref VPC
+      GroupDescription: !Sub 'EC2 Security Group'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-EC2SecurityGroup
+  ##########################################################################
+  # RDS
+  ##########################################################################
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Database subnet group
+      SubnetIds: !Ref DBSubnets
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-RdsSecurityGroup
+
+  DatabaseParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      DBParameterGroupName: pglogbintrustfunctioncreators
+      Description: Parameter Group for DB
+      Family: mysql8.0
+      Parameters:
+        log_bin_trust_function_creators: 1
+
+  CareGemDb:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroup
+      Engine: MySQL
+      EngineVersion: 8.0.30
+      DBName: !Ref DatabaseName
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      DBParameterGroupName: !Ref DatabaseParameterGroup
+      AllocatedStorage: !Ref DatabaseSize
+      MaxAllocatedStorage: 100
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: '05:00-05:30'
+      CopyTagsToSnapshot: true
+      StorageType: gp2
+      MultiAZ: true
+      StorageEncrypted: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-FargateRdsDb
+
+Outputs:
+  DbInstanceId:
+    Description: RDS database instance ID
+    Value: !Ref CareGemDb
+
+  DbConnectionString:
+    Description: CareGemDb RDS database URI
+    Value: !Sub 'host=${CareGemDb.Endpoint.Address} port=${CareGemDb.Endpoint.Port} dbname=${DatabaseName} user=${DatabaseUser}'
+
+  AppSecurityGroup:
+    Description: App Security Group
+    Value: !Ref AppSecurityGroup
+
+  RdsSecurityGroup:
+    Description: Rds Security Group
+    Value: !Ref RdsSecurityGroup

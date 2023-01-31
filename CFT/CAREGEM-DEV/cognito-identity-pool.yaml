@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cognito Stack
+Parameters:
+  IdentityPoolName:
+    Type: String
+    Description: Unique Name for IdentityPool
+    Default: 'CareGemIdentityPoolQA' 
+
+  UserPoolClientId:
+    Type: String
+    Description: UserPool Client Id (value can be obtained from the output of 'cognito-user-pool.yaml')
+    Default: '7519k85s7id8n5cqh68f595vgp'
+
+  ProviderName:
+    Type: String
+    Description: Provider Name Client Id (value can be obtained from the output of 'cognito-user-pool.yaml')
+    Default: 'cognito-idp.us-east-1.amazonaws.com/us-east-1_2rFI2Mvnz'
+
+Resources:
+
+  # Creates a federeated Identity pool
+  IdentityPool:
+    Type: "AWS::Cognito::IdentityPool"
+    Properties:
+      IdentityPoolName: !Ref IdentityPoolName
+      AllowUnauthenticatedIdentities: true
+      CognitoIdentityProviders: 
+        - ClientId: !Ref UserPoolClientId
+          ProviderName: !Ref ProviderName
+
+  # Create a role for unauthorized acces to AWS resources. 
+  # Very limited access. 
+  # Only allows users in the previously created Identity Pool
+  CognitoUnAuthorizedRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Federated: "cognito-identity.amazonaws.com"
+            Action: 
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals: 
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": unauthenticated
+      Policies:
+        - PolicyName: "CognitoUnauthorizedPolicy"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action:
+                  - "mobileanalytics:PutEvents"
+                  - "cognito-sync:*"
+                Resource: "*"
+
+  # Create a role for authorized acces to AWS resources. Control what your user can access. This example only allows Lambda invokation
+  # Only allows users in the previously created Identity Pool
+  CognitoAuthorizedRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Federated: "cognito-identity.amazonaws.com"
+            Action: 
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals: 
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies:
+        - PolicyName: "CognitoAuthorizedPolicy"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action:
+                  - "cognito-sync:*"
+                  - "cognito-identity:*"
+                  - "chime:CreateChannelModerator"
+                  - "chime:ListChannelMemberships"
+                  - "chime:ListChannelsModeratedByAppInstanceUser"
+                  - "chime:ListChannelModerators"
+                  - "chime:SendChannelMessage"
+                  - "chime:UpdateChannelMessage"
+                  - "chime:DescribeChannel"
+                  - "chime:ListChannelMessages"
+                  - "chime:ListChannels"
+                  - "chime:CreateChannelBan"
+                  - "chime:GetMessagingSessionEndpoint"
+                  - "chime:DeleteChannelBan"
+                  - "chime:ListChannelBans"
+                  - "chime:DeleteChannel"
+                  - "chime:CreateChannelMembership"
+                  - "chime:Connect"
+                  - "chime:CreateChannel"
+                  - "chime:ListChannelMembershipsForAppInstanceUser"
+                  - "chime:RedactChannelMessage"
+                  - "chime:UpdateChannel"
+                  - "chime:DescribeChannelModerator"
+                  - "chime:DeleteChannelModerator"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"
+  
+  # Assigns the roles to the Identity Pool
+  IdentityPoolRoleMapping:
+    Type: "AWS::Cognito::IdentityPoolRoleAttachment"
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      Roles:
+        authenticated: !GetAtt CognitoAuthorizedRole.Arn
+        unauthenticated: !GetAtt CognitoUnAuthorizedRole.Arn
+
+Outputs:
+  UserPoolClientId:
+    Value: !Ref UserPoolClientId
+  
+  IdentityPoolId:
+    Value: !Ref IdentityPool

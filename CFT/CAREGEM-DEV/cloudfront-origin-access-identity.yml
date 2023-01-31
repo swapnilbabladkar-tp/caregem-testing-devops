@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 Bucket to store logs '
+
+Resources:
+  # Configure Access to CloudFront
+  CloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: 'OAI For CareGem S3 buckets'
+
+Outputs:
+  OriginAccessIdentity:
+      Description: 'Origin Acess Identity'
+      Value: !Ref CloudFrontOriginAccessIdentity

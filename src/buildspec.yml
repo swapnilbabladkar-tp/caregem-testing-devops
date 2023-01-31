@@ -1,0 +1,15 @@
+version: 0.2
+env:
+  git-credential-helper: yes
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  pre_build:
+    commands:
+      - echo $SAM_CLI_SOURCE_BUCKET
+      - CURRENT_COMMIT=$(git rev-parse HEAD)
+      - PREVIOUS_COMMIT=$(git rev-parse HEAD~1)
+  build:
+    commands:
+      - bash src/build_deploy.sh $CURRENT_COMMIT $PREVIOUS_COMMIT

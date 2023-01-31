@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 Bucket to store logs '
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: 'caregem-logs'
+
+Resources:
+  # Create the bucket to store logs
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${BucketName}-${AWS::Region}-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+
+  # LOGGING S3 BUCKET POLICY
+  LoggingBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref 'S3Bucket'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: LoggingBucketPermissions
+            Effect: 'Allow'
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 's3:PutObject'
+            Resource:
+              - !Sub 'arn:aws:s3:::${S3Bucket}/AWSLogs/${AWS::AccountId}/*'
+
+  
+  LoggingBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref 'S3Bucket'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: LoggingBucketPermissions
+            Effect: 'Allow'
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 's3:PutObject'
+            Resource:
+              - !Sub 'arn:aws:s3:::${S3Bucket}/AWSLogs/${AWS::AccountId}/*'
+
+Outputs:
+  Bucket:
+    Description: 'Log S3 Bucket Name'
+    Value: !Ref S3Bucket

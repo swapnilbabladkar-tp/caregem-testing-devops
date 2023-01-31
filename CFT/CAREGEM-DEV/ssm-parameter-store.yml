@@ -1,0 +1,398 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: SAM Template for Systems Manager Parameters
+
+Parameters:
+  AccessLogArnParameterName:
+    Type: String
+    Default: /caregem/AccessLogArn
+  AccessLogArnParameterValue:
+    Type: String
+    Default: arn:aws:logs:us-east-1:416887080895:log-group:API-Gateway-Access-Logs:*
+  ApiKeysParameterName:
+    Type: String
+    Default: /caregem/ApiKeys
+  ApiKeysParameterValue:
+    Type: String
+    Default: prod/caregem/api_keys
+  AuthorizerLambdaArnParameterName:
+    Type: String
+    Default: /caregem/AuthorizerLambdaArn
+  AuthorizerLambdaArnParameterValue:
+    Type: String
+    Default: arn:aws:lambda:us-east-1:416887080895:function:CustomAuthorizerLambda
+  AwsRegionParameterName:
+    Type: String
+    Default: /caregem/AwsRegion
+  AwsRegionParameterValue:
+    Type: String
+    Default: us-east-1
+  BillingCDSSecretParameterName:
+    Type: String
+    Default: /caregem/BillingCDSSecret
+  BillingCDSSecretParameterValue:
+    Type: String
+    Default: prod/caregem/billing_cds
+  CaregemS3ConfigParameterName:
+    Type: String
+    Default: /caregem/CaregemS3Config
+  CaregemS3ConfigParameterValue:
+    Type: String
+    Default: caregem-config-us-east-1-416887080895
+  ChimeInstanceArnParameterName:
+    Type: String
+    Default: /caregem/ChimeInstanceArn
+  ChimeInstanceArnParameterValue:
+    Type: String
+    Default: arn:aws:chime:us-east-1:416887080895:app-instance/256e39db-6efa-438b-b5aa-63636a3fef90
+  ChimePSTNNumberParameterName:
+    Type: String
+    Default: /caregem/ChimePSTNNumber
+  ChimePSTNNumberParameterValue:
+    Type: String
+    Default: "+17576933508"
+  CognitoSecretParameterName:
+    Type: String
+    Default: /caregem/CognitoSecret
+  CognitoSecretParameterValue:
+    Type: String
+    Default: prod/caregem/cognito
+  CognitoUserPoolParameterName:
+    Type: String
+    Default: /caregem/CognitoUserPool
+  CognitoUserPoolParameterValue:
+    Type: String
+    Default: us-east-1_E3mpRFDcj
+  DestinationEmailListParameterName:
+    Type: String
+    Default: /caregem/DestinationEmailList
+  DestinationEmailListParameterValue:
+    Type: String
+    Default: notify@carelogiq.com
+  EmailSourceParameterName:
+    Type: String
+    Default: /caregem/EmailSource
+  EmailSourceParameterValue:
+    Type: String
+    Default: notify@caregem.org
+  EmailSourceArnParameterName:
+    Type: String
+    Default: /caregem/EmailSourceArn
+  EmailSourceArnParameterValue:
+    Type: String
+    Default: arn:aws:ses:us-east-1:416887080895:identity/notify@caregem.org
+  MessageSecretParameterName:
+    Type: String
+    Default: /caregem/MessageSecret
+  MessageSecretParameterValue:
+    Type: String
+    Default: prod/caregem/sms_cred
+  MlprepMysqlSecretParameterName:
+    Type: String
+    Default: /caregem/MlprepMysqlSecret
+  MlprepMysqlSecretParameterValue:
+    Type: String
+    Default: prod/caregem/mlprep
+  MysqlSecretParameterName:
+    Type: String
+    Default: /caregem/MysqlSecret
+  MysqlSecretParameterValue:
+    Type: String
+    Default: prod/caregem/carex
+  PolicyTableParameterName:
+    Type: String
+    Default: /caregem/PolicyTableName
+  PolicyTableParameterValue:
+    Type: String
+    Default: cg-policy-table
+  SftpSecretParameterName:
+    Type: String
+    Default: /caregem/SftpSecretName
+  SftpSecretParameterValue:
+    Type: String
+    Default: prod/caregem/sftp_cds
+  StageParameterName:
+    Type: String
+    Default: /caregem/Stage
+  StageParameterValue:
+    Type: String
+    Default: prod
+  UserProfileTableParameterName:
+    Type: String
+    Default: /caregem/UserProfileTableName
+  UserProfileTableParameterValue:
+    Type: String
+    Default: user_pii
+  VpcSgParameterName:
+    Type: String
+    Default: /caregem/VpcSg
+  VpcSgParameterValue:
+    Type: String
+    Default: sg-0397bafa173ad9088
+  VpcSubnetParameterName:
+    Type: String
+    Default: /caregem/VpcSubnet
+  VpcSubnetParameterValue:
+    Type: String
+    Default: subnet-09d1f3055df8a92d2, subnet-0724317c78a8aed58
+  WebSocketUrlParameterName:
+    Type: String
+    Default: /caregem/WebSocketURL
+  WebSocketUrlParameterValue:
+    Type: String
+    Default: https://0v1o8444kj.execute-api.us-east-1.amazonaws.com/prod/
+  CDSCustomerAdminIdParameterName:
+    Type: String
+    Default: /caregem/CDSCustomerAdminId
+  CDSCustomerAdminIdParameterValue:
+    Type: String
+    Default: 126
+  UseTwilioParameterName:
+    Type: String
+    Default: /caregem/UseTwilio
+  UseTwilioParameterValue:
+    Type: String
+    Default: true
+  TwilioSMSEnabledParameterName:
+    Type: String
+    Default: /caregem/TwilioSMSEnabled
+  TwilioSMSEnabledParameterValue:
+    Type: String
+    Default: true
+  MaxLoginAttemptParameterName:
+    Type: String
+    Default: /caregem/MaxLoginAttempts
+  MaxLoginAttemptParameterValue:
+    Type: String
+    Default: 10
+
+Resources:
+  AccessLogArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref AccessLogArnParameterName
+      DataType: text
+      Type: String
+      Value: !Ref AccessLogArnParameterValue
+      Description: Access Log Arn
+
+  ApiKeysParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref ApiKeysParameterName
+      DataType: text
+      Type: String
+      Value: !Ref ApiKeysParameterValue
+      Description: API Keys
+
+  AuthorizerLambdaArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref AuthorizerLambdaArnParameterName
+      DataType: text
+      Type: String
+      Value: !Ref AuthorizerLambdaArnParameterValue
+      Description: Custom Authorizer
+
+  AwsRegionParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref AwsRegionParameterName
+      DataType: text
+      Type: String
+      Value: !Ref AwsRegionParameterValue
+      Description: Aws Region
+
+  BillingCDSSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref BillingCDSSecretParameterName
+      DataType: text
+      Type: String
+      Value: !Ref BillingCDSSecretParameterValue
+      Description: Billing
+
+  CaregemS3ConfigParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref CaregemS3ConfigParameterName
+      DataType: text
+      Type: String
+      Value: !Ref CaregemS3ConfigParameterValue
+
+  ChimeInstanceArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref ChimeInstanceArnParameterName
+      DataType: text
+      Type: String
+      Value: !Ref ChimeInstanceArnParameterValue
+      Description: Chime Instance Arn
+
+  ChimePSTNNumberParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref ChimePSTNNumberParameterName
+      DataType: text
+      Type: String
+      Value: !Ref ChimePSTNNumberParameterValue
+      Description: Chime PSTN Number
+
+  CognitoSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref CognitoSecretParameterName
+      DataType: text
+      Type: String
+      Value: !Ref CognitoSecretParameterValue
+      Description: Custom Authorizer
+
+  CognitoUserPoolParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref CognitoUserPoolParameterName
+      DataType: text
+      Type: String
+      Value: !Ref CognitoUserPoolParameterValue
+      Description: User Pool Id
+
+  DestinationEmailListParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref DestinationEmailListParameterName
+      DataType: text
+      Type: String
+      Value: !Ref DestinationEmailListParameterValue
+      Description: List of destination emails for notification on CRUD operation on Customer admins
+
+  EmailSourceParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref EmailSourceParameterName
+      DataType: text
+      Type: String
+      Value: !Ref EmailSourceParameterValue
+
+  EmailSourceArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref EmailSourceArnParameterName
+      DataType: text
+      Type: String
+      Value: !Ref EmailSourceArnParameterValue
+
+  MessageSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref MessageSecretParameterName
+      DataType: text
+      Type: String
+      Value: !Ref MessageSecretParameterValue
+
+  MlprepMysqlSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref MlprepMysqlSecretParameterName
+      DataType: text
+      Type: String
+      Value: !Ref MlprepMysqlSecretParameterValue
+      Description: Mlprep Secret
+
+  MysqlSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref MysqlSecretParameterName
+      DataType: text
+      Type: String
+      Value: !Ref MysqlSecretParameterValue
+
+  PolicyTableParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref PolicyTableParameterName
+      DataType: text
+      Type: String
+      Value: !Ref PolicyTableParameterValue
+
+  SftpSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref SftpSecretParameterName
+      DataType: text
+      Type: String
+      Value: !Ref SftpSecretParameterValue
+
+  StageParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref StageParameterName
+      DataType: text
+      Type: String
+      Value: !Ref StageParameterValue
+      Description: Stage Name
+
+  UserProfileTableParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref UserProfileTableParameterName
+      DataType: text
+      Type: String
+      Value: !Ref UserProfileTableParameterValue
+
+  VpcSgParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref VpcSgParameterName
+      DataType: text
+      Type: String
+      Value: !Ref VpcSgParameterValue
+      Description: App Security Group
+
+  VpcSubnetParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref VpcSubnetParameterName
+      DataType: text
+      Type: StringList
+      Value: !Ref VpcSubnetParameterValue
+      Description: Private Subnets
+
+  WebSocketUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref WebSocketUrlParameterName
+      DataType: text
+      Type: String
+      Value: !Ref WebSocketUrlParameterValue
+
+  CDSCustomerAdminId:
+    Type: AWS::SSM:Parameter
+    Properties:
+      Name: !Ref CDSCustomerAdminIdParameterName
+      DataType: text
+      Type: String
+      Value: !Ref CDSCustomerAdminIdParameterValue
+
+  UseTwilio:
+    Type: AWS::SSM:Parameter
+    Properties:
+      Name: !Ref UseTwilioParameterName
+      DataType: text
+      Type: String
+      Value: !Ref UseTwilioParameterValue
+
+  TwilioSMSEnabled:
+    Type: AWS::SSM:Parameter
+    Properties:
+      Name: !Ref TwilioSMSEnabledParameterName
+      DataType: text
+      Type: String
+      Value: !Ref TwilioSMSEnabledParameterValue
+
+  MaxLoginAttempts:
+    Type: AWS::SSM:Parameter
+    Properties:
+      Name: !Ref MaxLoginAttemptParameterName
+      DataType: text
+      Type: String
+      Value: !Ref MaxLoginAttemptParameterValue

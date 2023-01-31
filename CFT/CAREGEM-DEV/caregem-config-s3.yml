@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 Bucket for caregem config'
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: 'caregem-config'
+
+Resources:
+  CaregemConfigBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${BucketName}-${AWS::Region}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+Outputs:
+  Bucket:
+    Description: 'Created S3 bucket for caregem config'
+    Value: !Ref CaregemConfigBucket

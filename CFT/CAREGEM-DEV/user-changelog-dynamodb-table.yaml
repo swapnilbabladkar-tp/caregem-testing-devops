@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM Template for User changelog table
+Parameters:
+  ChangelogTableName:
+    Type: String
+    Default: user_pii_hist
+
+Resources:
+  UserPiiHistDynamoDBTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      TableName: !Ref ChangelogTableName
+      AttributeDefinitions:
+        - AttributeName: "external_id"
+          AttributeType: "S"
+        - AttributeName: "version"
+          AttributeType: "S"
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: "external_id"
+          KeyType: "HASH"
+        - AttributeName: "version"
+          KeyType: "RANGE"
+
+Outputs:
+  UserPiiDynamoDBTable:
+    Description: "Changelog Table"
+    Value: !Ref UserPiiHistDynamoDBTable

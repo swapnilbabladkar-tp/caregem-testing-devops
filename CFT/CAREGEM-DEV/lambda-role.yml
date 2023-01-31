@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+
+  UserTableArn:
+    Type: String
+    Description: User Table Arn
+    Default: arn:aws:dynamodb:us-east-1:516161668456:table/user_pii
+
+  PolicyTableArn:
+    Type: String
+    Description: Policy Table Arn
+    Default: arn:aws:dynamodb:us-east-1:516161668456:table/cg-policy-table
+
+  RDSSecretArn:
+    Type: String
+    Description: RDS Secret Arn
+    Default: arn:aws:secretsmanager:us-east-1:516161668456:secret:stg/caregem/mysql-QDzzcm
+
+
+Resources:
+  RootRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: caregem-app-lambda-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: caregem-vpc-lambda-role-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action: [
+                  "ec2:DescribeInstances",
+                  "ec2:CreateNetworkInterface",
+                  "ec2:AttachNetworkInterface",
+                  "ec2:DescribeNetworkInterfaces",
+                  "ec2:DeleteNetworkInterface"
+                ]
+                Resource: "*"
+
+              - Effect: "Allow"
+                Action: [
+                  "xray:PutTraceSegments",
+                  "xray:PutTelemetryRecords",
+                  "logs:CreateLogGroup",
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents"
+                ]
+                Resource: "*"
+
+              - Effect: "Allow"
+                Action: [
+                  "dynamodb:GetItem",
+                  "dynamodb:Scan",
+                  "dynamodb:Query",
+                  "dynamodb:BatchGetItem",
+                  "dynamodb:DescribeTable",
+                  "dynamodb:PutItem"
+                  ]
+                Resource:
+                  - !Ref UserTableArn
+                  - !Ref PolicyTableArn 
+
+              - Effect: "Allow"
+                Action: [
+                  "secretsmanager:GetResourcePolicy",
+                  "secretsmanager:GetSecretValue",
+                  "secretsmanager:DescribeSecret",
+                  "secretsmanager:ListSecretVersionIds"
+                  ]
+                Resource:
+                  - !Ref RDSSecretArn
+
+              - Effect: "Allow"
+                Action: [
+                  "secretsmanager:ListSecrets",
+                ]
+                Resource: "*"                  

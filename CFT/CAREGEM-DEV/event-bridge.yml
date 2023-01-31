@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  ChimeMeetingArn:
+    Type: String
+    Default: arn:aws:lambda:us-east-1:416887080895:function:Message-Chime-Attendee-Joined-Lambda
+
+Resources:
+  ChimeMeeting:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: chime-meeting
+      EventPattern:
+        source:
+          - 'aws.chime'
+        detail-type:
+          - 'Chime Meeting State Change'
+        detail:
+          eventType:
+            - 'chime:AttendeeJoined'
+      State: ENABLED
+      Targets:
+        - Arn: !Ref ChimeMeetingArn
+          Id: Message-Chime-Attendee-Joined-Lambda

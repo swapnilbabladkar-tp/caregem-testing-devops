@@ -1,0 +1,170 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Appointment-service
+
+  SAM Template for Appointment-service
+
+Parameters:
+  PrivateSubnets:
+    Type: 'AWS::SSM::Parameter::Value<List<String>>'
+    Default: /caregem/VpcSubnet
+  LambdaSecurityGroupId:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/VpcSg
+  AuthorizerLambdaArn:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/AuthorizerLambdaArn
+  Stage:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/Stage
+  CognitoUserPool:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/CognitoUserPool
+  AwsRegion:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/AwsRegion
+  UserProfileTableName:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/UserProfileTableName
+  MysqlSecret:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/MysqlSecret
+  MlprepMysqlSecret:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/MlprepMysqlSecret
+  AccessLogArn:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/AccessLogArn
+
+Globals:
+  Function:
+    Timeout: 5
+    MemorySize: 512
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroupId
+      SubnetIds: !Ref PrivateSubnets
+    Environment:
+      Variables:
+        LOG_LEVEL: 'INFO'
+        DB_SECRET_NAME: !Ref MysqlSecret
+        MLPREP_SECRET_NAME: !Ref MlprepMysqlSecret
+        DYNAMODB_REGION: !Ref AwsRegion
+        AWSREGION: !Ref AwsRegion
+        USER_POOL_REGION: !Ref AwsRegion
+        USER_PROFILE_TABLE_NAME: !Ref UserProfileTableName
+        USER_POOL_ID: !Ref CognitoUserPool
+  Api:
+    EndpointConfiguration: REGIONAL
+    TracingEnabled: true
+    OpenApiVersion: '2.0'
+    Cors:
+      AllowMethods: "'OPTIONS,POST,GET,PUT,DELETE'"
+      AllowHeaders: "'Content-Type,Authorization'"
+      AllowOrigin: "'*'"
+
+Resources:
+  UtilsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ../layers/utilLayer
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      Name: Appointment Api
+      Description: Appointment Service
+      Auth:
+        AddDefaultAuthorizerToCorsPreflight: false
+        DefaultAuthorizer: LambdaTokenAuthorizer
+        Authorizers:
+          LambdaTokenAuthorizer:
+            FunctionArn: !Ref AuthorizerLambdaArn
+      AccessLogSetting:
+        DestinationArn: !Ref AccessLogArn
+        Format: '{
+          "requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod", "path":"$context.path", "resourcePath":"$context.resourcePath", "status":"$context.status", "responseLatency":"$context.responseLatency",
+          "integrationRequestId":"$context.integration.requestId", "functionResponseStatus":"$context.integration.status", "authorizeResultStatus":"$context.authorize.status", "authorizerServiceStatus":"$context.authorizer.status",
+          "authorizerRequestId":"$context.authorizer.requestId","authorizeError":"$context.authorize.error", "claims": "$context.authorizer.claims",
+          "ip":"$context.identity.sourceIp", "userAgent":"$context.identity.userAgent", "principalId":"$context.authorizer.principalId", "cognitoUser":"$context.identity.cognitoIdentityId", "user":"$context.identity.user",
+          "apiId":"$context.apiId"
+        }'
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: caregem-secret-manager-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: '*'
+        - PolicyName: caregem-dynamodb-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:BatchGetItem
+                Resource: '*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  AppointmentScheduleRemove:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: Appointment-Schedule-Remove-Lambda
+      CodeUri: ./
+      Handler: appointment.lambda_handler
+      Layers:
+        - !Ref UtilsLayer
+      Role: !GetAtt LambdaRole.Arn
+      Events:
+        Schedulde:
+          Type: Api
+          Properties:
+            Path: /appointment/schedule
+            Method: POST
+            RestApiId: !Ref Api
+        Remove:
+          Type: Api
+          Properties:
+            Path: /appointment/remove/{appointment_id}
+            Method: PUT
+            RestApiId: !Ref Api
+        List:
+          Type: Api
+          Properties:
+            Path: /appointment/list/{patient_id}
+            Method: GET
+            RestApiId: !Ref Api
+
+Outputs:
+  AppointmentApi:
+    Description: 'API Gateway endpoint URL for NonProd stage for Appointment Service'
+    Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Stage}'

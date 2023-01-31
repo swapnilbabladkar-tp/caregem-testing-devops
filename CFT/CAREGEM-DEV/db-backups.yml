@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Backups for DynamoDB and RDS
+
+Parameters:
+  BackupVaultName:
+    Type: String
+    Default: BackupVaultWithDBBackups
+  BackupPlanName:
+    Type: String
+    Default: DB_6HourBackup7dayRetention
+  BackupSelectionName:
+    Type: String
+    Default: backup_resource_assignment
+  BackupPlanRule:
+    Type: String
+    Default: DB6HourBackupRule
+  ScheduleExpression:
+    Type: String
+    Default: cron(0 5/6 ? * * *)
+  StartWindowMinutes:
+    Type: Number
+    Default: 480
+  CompletionWindowMinutes:
+    Type: Number
+    Default: 10080
+  DeleteAfterDays:
+    Type: Number
+    Default: 7
+  DynamoDBResourceSelectionArn:
+    Type: String
+    Default: arn:aws:dynamodb:*:*:table/*
+  RDSResourceSelectionArn:
+    Type: String
+    Default: arn:aws:rds:*:*:db:*
+
+Resources:
+  DatabaseBackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: !Ref BackupVaultName
+
+  DatabaseBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Ref BackupPlanName
+        BackupPlanRule:
+          - StartWindowMinutes: !Ref StartWindowMinutes
+            CompletionWindowMinutes: !Ref CompletionWindowMinutes
+            TargetBackupVault: !Ref DatabaseBackupVault
+            ScheduleExpression: !Ref ScheduleExpression
+            RuleName: !Ref BackupPlanRule
+            Lifecycle:
+              DeleteAfterDays: !Ref DeleteAfterDays
+            CopyActions:
+              - DestinationBackupVaultArn: !GetAtt DatabaseBackupVault.BackupVaultArn
+
+    DependsOn: DatabaseBackupVault
+
+  BackupRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'backup.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores'
+
+  DatabaseBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref DatabaseBackupPlan
+      BackupSelection:
+        SelectionName: !Ref BackupSelectionName
+        IamRoleArn: !GetAtt BackupRole.Arn
+        Resources:
+          - !Ref DynamoDBResourceSelectionArn
+          - !Ref RDSResourceSelectionArn

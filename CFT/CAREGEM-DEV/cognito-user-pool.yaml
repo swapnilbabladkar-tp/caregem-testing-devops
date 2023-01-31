@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Cognito user-pool-resources
+
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}
+      AutoVerifiedAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        PasswordPolicy:
+          TemporaryPasswordValidityDays: 30
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: cg-app
+      GenerateSecret: false
+      UserPoolId: !Ref CognitoUserPool
+      AllowedOAuthScopes:
+        - openid
+        - aws.cognito.signin.user.admin
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      CallbackURLs:
+        - http://localhost:3000/
+      LogoutURLs:
+        - http://localhost:3000/
+
+  CognitoUserPoolDomain:
+    Type: 'AWS::Cognito::UserPoolDomain'
+    Properties:
+      Domain: !Sub dns-name-${UserPoolClient}
+      UserPoolId: !Ref CognitoUserPool
+    DependsOn:
+      - UserPoolClient
+
+Outputs:
+  CognitoUserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref CognitoUserPool
+
+  CognitoAppClientId:
+    Description: 'Cognito App Client ID'
+    Value: !Ref UserPoolClient
+
+  UserPoolARN:
+    Description: 'UserPool ID'
+    Value: !GetAtt CognitoUserPool.Arn
+
+  UserPoolProviderName:
+    Description: 'UserPool Provider Name'
+    Value: !GetAtt CognitoUserPool.ProviderName

@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 Bucket as CloudFront Origin'
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: 'org-portal-s3-qa'
+  OriginAccessIdentity:
+    Type: String
+    Default: E3UEJYFEPHHVZY (obtained from the output section of 'cloudfront-origin-access-identity.yml')
+Resources:
+  # Create the bucket to store logs
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${BucketName}-${AWS::Region}-${AWS::AccountId}'
+      WebsiteConfiguration:
+        ErrorDocument: 'index.html'
+        IndexDocument: 'index.html'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+
+  BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref 'S3Bucket'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: BucketPermissions
+            Effect: 'Allow'
+            Principal:
+              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${OriginAccessIdentity}'
+            Action: 's3:GetObject'
+            Resource:
+              - !Sub 'arn:aws:s3:::${S3Bucket}/*'
+
+Outputs:
+  Bucket:
+    Description: 'S3 Bucket Name'
+    Value: !Ref S3Bucket

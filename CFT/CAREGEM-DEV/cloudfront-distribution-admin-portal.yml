@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFront distribution for Admin Portal'
+
+Parameters:
+  BucketName:
+    Type: String
+    #obtained from the output section of the CFT -> 'admin-portal-s3'
+    Default: 'admin-portal-s3-prod-us-east-1-416887080895'
+
+  LoggingBucketName:
+    Type: String
+    #obtained from the output section of the CFT -> 'logs-s3.yml'
+    Default: 'caregem-logs-us-east-1-416887080895'
+
+  CloudFrontOriginAccessIdentity:
+    Type: String
+    #obtained from the output section of the CFT -> 'cloudfront-origin-access-identity.yml'
+    Default: 'E3HT8X203PMI9M'
+
+  ACMCertificateIdentifier:
+    Type: String
+    Default: 'cde85e55-d643-438b-9a36-22edd69a54e8'
+
+  CloudFrontDistributionComment:
+    Type: String
+    #obtained from the Certificate Manager
+    Default: 'Admin Portal distribution'
+
+  PriceClass:
+    Description: The price class that corresponds with the maximum price that you want to pay for CloudFront service. If you specify PriceClass_All, CloudFront responds to requests for your objects from all CloudFront edge locations.
+    Type: String
+    Default: 'PriceClass_100'
+    AllowedValues:
+      - PriceClass_All
+      - PriceClass_100
+      - PriceClass_200
+
+  SslSupportMethod:
+    Description: Specifies how CloudFront serves HTTPS requests.
+    Type: String
+    Default: 'sni-only'
+    AllowedValues:
+      - sni-only
+      - vip
+
+  MinimumProtocolVersion:
+    Description: The minimum version of the SSL protocol that you want CloudFront to use for HTTPS connections.
+    Type: String
+    Default: 'TLSv1'
+    AllowedValues:
+      - TLSv1
+      - TLSv1.2_2018
+      - TLSv1.1_2016
+      - TLSv1_2016
+      - SSLv3
+
+  IPV6Enabled:
+    Description: Should CloudFront to respond to IPv6 DNS requests with an IPv6 address for your distribution.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - true
+      - false
+
+  DefaultTTL:
+    Description: The default time in seconds that objects stay in CloudFront caches before CloudFront forwards another request to your custom origin. By default, AWS CloudFormation specifies 86400 seconds (one day).
+    Type: String
+    Default: '0'
+
+  MaxTTL:
+    Description: The maximum time in seconds that objects stay in CloudFront caches before CloudFront forwards another request to your custom origin. By default, AWS CloudFormation specifies 31536000 seconds (one year).
+    Type: String
+    Default: '0'
+
+  MinTTL:
+    Description: The minimum amount of time that you want objects to stay in the cache before CloudFront queries your origin to see whether the object has been updated.
+    Type: String
+    Default: '0'
+
+Resources:
+  # Configure CloudFront
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Comment: !Ref 'CloudFrontDistributionComment'
+        Aliases:
+          - admin.caregem.org
+        ViewerCertificate:
+          AcmCertificateArn: !Sub 'arn:aws:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}'
+          SslSupportMethod: !Ref 'SslSupportMethod'
+          MinimumProtocolVersion: !Ref 'MinimumProtocolVersion'
+
+        CustomErrorResponses:
+          - ErrorCode: 403 # Forbidden
+            ResponseCode: 200
+            ResponsePagePath: '/index.html'
+
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          Compress: true
+          DefaultTTL: !Ref 'DefaultTTL'
+          MaxTTL: !Ref 'MaxTTL'
+          MinTTL: !Ref 'MinTTL'
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: false
+          TargetOriginId: s3origin
+          ViewerProtocolPolicy: 'redirect-to-https'
+        # This DefaultRootObject configuration is not enough.
+        DefaultRootObject: '/index.html'
+        Enabled: true
+        HttpVersion: http2
+        Origins:
+          - DomainName: !Sub '${BucketName}.s3.amazonaws.com'
+            Id: s3origin
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+        PriceClass: !Ref 'PriceClass'
+        IPV6Enabled: !Ref 'IPV6Enabled'
+        Logging:
+          Bucket: !Sub '${LoggingBucketName}.s3.amazonaws.com'
+
+Outputs:
+  Domain:
+    Description: 'Cloudfront Domain'
+    Value: !GetAtt CloudFrontDistribution.DomainName

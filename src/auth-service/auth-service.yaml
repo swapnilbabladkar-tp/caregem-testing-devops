@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  auth-resources
+  SAM Template for auth resources
+
+Parameters:
+  CognitoUserPool:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: /caregem/CognitoUserPool
+  AwsRegion:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: /caregem/AwsRegion
+  UserProfileTableName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: /caregem/UserProfileTableName
+  MysqlSecret:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: /caregem/MysqlSecret
+  MlprepMysqlSecret:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: /caregem/MlprepMysqlSecret
+  PolicyTableName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: /caregem/PolicyTableName
+
+Globals:
+  Function:
+    Timeout: 3
+
+Resources:
+  UtilsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ../layers/utilLayer
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: caregem-secret-manager-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:PutSecretValue
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:TagResource
+                  - secretsmanager:ListSecrets
+                Resource: "*"
+        - PolicyName: caregem-dynamodb-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:DescribeTable
+                  - dynamodb:ConditionCheckItem
+                Resource: "*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  CustomAuthorizerLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: CustomAuthorizerLambda
+      CodeUri: ./
+      Handler: custom_authorizer.lambda_handler
+      Layers:
+        - !Ref UtilsLayer
+      Runtime: python3.9
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPool
+          DYNAMODB_REGION: !Ref AwsRegion
+          POLICY_TABLE_NAME: !Ref PolicyTableName
+          USER_PROFILE_TABLE_NAME: !Ref UserProfileTableName
+
+Outputs:
+  AuthFunctionArn:
+    Description: "Auth Function Arn"
+    Value: !GetAtt CustomAuthorizerLambda.Arn

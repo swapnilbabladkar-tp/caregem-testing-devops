@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: |
+    Create CareGem Chime User
+
+Parameters:
+  ChimeSdkUserName:
+        Description: User Name
+        Type: String
+        Default: caregem-chime-sdk-user
+
+Resources:
+    ChimeSdkUser:
+        Type: AWS::IAM::User
+        Properties:
+          Path: /
+          UserName: !Ref ChimeSdkUserName
+          Policies:
+            - PolicyName: CareGemChimeUserPolicy
+              PolicyDocument:
+                Version: 2012-10-17
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - chime:ListChannels
+                      - chime:DescribeChannel
+                      - chime:ListChannelMembershipsForAppInstanceUser
+                      - chime:DescribeChannelMembershipForAppInstanceUser
+                      - chime:ListChannelsModeratedByAppInstanceUser
+                      - chime:DescribeChannelModeratedByAppInstanceUser
+                      - chime:SendChannelMessage
+                      - chime:GetChannelMessage
+                      - chime:ListChannelMessages
+                      - chime:Connect
+                      - chime:GetMessagingSessionEndpoint
+                    Resource: '*'
+                        
+Outputs:
+    CareGemChimeSdkUser:
+        Description: Chime Sdk User 
+        Value: !Ref ChimeSdkUser                        

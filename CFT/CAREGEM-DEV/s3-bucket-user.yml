@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: |
+  Create CareGem S3 User
+
+Parameters:
+  ProviderS3Bucket:
+    Description: Patient S3
+    Type: String
+    Default: provider-portal-s3-prod-us-east-1-416887080895
+
+  OrgS3Bucket:
+    Description: Org S3
+    Type: String
+    Default: org-portal-s3-prod-us-east-1-416887080895
+
+  AdminS3Bucket:
+    Description: Admin S3
+    Type: String
+    Default: admin-portal-s3-prod-us-east-1-416887080895
+
+  S3UserName:
+    Description: S3 User
+    Type: String
+    Default: caregem-s3-user
+
+Resources:
+  S3User:
+    Type: AWS::IAM::User
+    Properties:
+      Path: /
+      UserName: !Ref S3UserName
+      Policies:
+        - PolicyName: CareS3UserPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:List*
+                  - s3:GetBucketLocation
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ProviderS3Bucket}/*'
+                  - !Sub 'arn:aws:s3:::${AdminS3Bucket}/*'
+                  - !Sub 'arn:aws:s3:::${OrgS3Bucket}/*'
+              - Effect: Deny
+                Action:
+                  - s3:Delete*
+                Resource: '*'
+
+Outputs:
+  S3User:
+    Description: S3 User
+    Value: !Ref S3User

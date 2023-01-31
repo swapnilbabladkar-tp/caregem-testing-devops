@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM Template for Policy Table
+Parameters:
+  PolicyTableName:
+    Type: String
+    Default: cg-policy-table
+
+Resources:
+  PolicyDynamoDBTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref PolicyTableName
+      AttributeDefinitions:
+        - AttributeName: "group"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "group"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
+   
+Outputs:
+
+  PolicyTable:
+    Description: "Policy Store Table"
+    Value: !Ref PolicyDynamoDBTable

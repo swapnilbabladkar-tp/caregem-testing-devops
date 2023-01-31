@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM Template for User table
+Parameters:
+  UserTableName:
+    Type: String
+    Default: user_pii
+
+Resources:
+  UserPiiDynamoDBTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref UserTableName
+      AttributeDefinitions:
+        - AttributeName: 'external_id'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'external_id'
+          KeyType: 'HASH'
+      BillingMode: PAY_PER_REQUEST
+
+Outputs:
+  UserPiiDynamoDBTable:
+    Description: 'Policy Store Table'
+    Value: !Ref UserPiiDynamoDBTable
