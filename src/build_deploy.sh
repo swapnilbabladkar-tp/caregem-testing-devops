@@ -36,7 +36,7 @@ if echo "${changed_service_list[@]}" | grep -q "layers"; then
     # Combine the results
     folders="$folders1 $folders2"
     echo $folders
-    changed_folders=$(echo "$folders" | sed 's/\.//g' | sed 's/\///g')
+    changed_folders=$(echo "$folders" | sed 's/src//g' | sed 's/\.//g' | sed 's/\///g')
 
     echo ${changed_folders[@]}
     for service_name in ${changed_folders[@]}; do
