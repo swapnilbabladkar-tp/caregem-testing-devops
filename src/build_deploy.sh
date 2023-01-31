@@ -26,7 +26,7 @@ echo ${changed_service_list[@]}
 
 if echo "${changed_service_list[@]}" | grep -q "layers"; then
     echo "BUILDING ALL SERVICES"
-    folders=($(ls -d *-service *-trigger))
+    folders=($(ls | egrep -i 'service|trigger'))
     echo
     echo ${folders[@]}
     for service_name in ${folders[@]}; do
