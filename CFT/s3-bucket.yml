@@ -1,0 +1,13 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  DevS3Bucket:
+    Type: String
+    Description: The name of the S3 Bucket to create
+  
+Resources:
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref DevS3Bucket

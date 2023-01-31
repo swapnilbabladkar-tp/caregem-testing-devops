@@ -1,0 +1,6 @@
+[
+    {
+        "ParameterKey":"DevS3Bucket",
+        "ParameterValue":"s3-test-bucket-dev-caregem-jan-2023"
+    }
+]
