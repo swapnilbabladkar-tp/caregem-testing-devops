@@ -21,10 +21,15 @@ IFS=',' read -ra changed_files_list <<< "$changed_files_array"
 # Unique entries of services 
 changed_service_list=($(echo "${changed_files_list[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
+changed_service_list=("layers")
+echo ${changed_service_list[@]}
+
 if echo "${changed_service_list[@]}" | grep -q "layers"; then
     echo "BUILDING ALL SERVICES"
+    folders=($(ls -d *-service *-trigger))
     echo
-    for service_name in *-trigger *-service; do
+    echo ${folders[@]}
+    for service_name in ${folders[@]}; do
 
         # Template file 
         buildfile=${service_name}/${service_name}.yaml
