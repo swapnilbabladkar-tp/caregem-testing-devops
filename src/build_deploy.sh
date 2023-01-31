@@ -26,7 +26,9 @@ git_details(){
 run_build_deploy(){
 
     if echo "${changed_service_list[@]}" | grep -q "layers"; then
+        echo "-----------------------------------------------------------"
         echo "BUILDING ALL SERVICES"
+        echo "-----------------------------------------------------------"
 
         # Run only for service and trigger functions
         pattern1="*-service"
@@ -50,13 +52,15 @@ run_build_deploy(){
         done
         exit
     elif echo "${changed_service_list[@]}" | egrep -q "service|trigger"; then
+        echo "-----------------------------------------------------------"
         echo "BUILDING ONLY CHANGED SERVICES - ${changed_service_list[@]}"
+        echo "-----------------------------------------------------------"
         
         for file in "${changed_service_list[@]}"; do
             if echo $file | egrep -q "migration|iac|scripts|bin|aws_scripts"; then
-                echo "----------------------------------------------------"
+                echo "-----------------------------------------------------------"
                 echo "Build not applicable for service $file"
-                echo "----------------------------------------------------"
+                echo "-----------------------------------------------------------"
             else
                 service_name=$(echo $file | cut -d '/' -f 2)
                 
@@ -74,7 +78,9 @@ run_build_deploy(){
         done
     else
         echo ${changed_service_list[@]}
-        echo "NO BACKENDSERVICE MODIFIED"    
+        echo "-----------------------------------------------------------"
+        echo "NO BACKEND SERVICE MODIFIED"    
+        echo "-----------------------------------------------------------"
     fi
 
 }
@@ -152,7 +158,7 @@ start=$(date +%s)
 git_details
 
 #LOCAL TESTING
-changed_service_list=("misc-service" "notification-service")
+changed_service_list=("layers")
 
 run_build_deploy
 end=$(date +%s)
