@@ -26,10 +26,19 @@ echo ${changed_service_list[@]}
 
 if echo "${changed_service_list[@]}" | grep -q "layers"; then
     echo "BUILDING ALL SERVICES"
-    folders=($(ls | egrep -i 'service|trigger'))
-    echo
-    echo ${folders[@]}
-    for service_name in ${folders[@]}; do
+    pattern1="*-service"
+    pattern2="*-trigger"
+
+    # Find all the matching folders
+    folders1=$(find . -type d -name "$pattern1")
+    folders2=$(find . -type d -name "$pattern2")
+
+    # Combine the results
+    folders="$folders1 $folders2"
+    changed_folders=$(echo "$folders" | sed 's/\.//g' | sed 's/\///g')
+
+    echo ${changed_folders[@]}
+    for service_name in ${changed_folders[@]}; do
 
         # Template file 
         buildfile=${service_name}/${service_name}.yaml
