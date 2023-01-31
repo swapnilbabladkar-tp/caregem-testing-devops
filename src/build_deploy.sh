@@ -84,7 +84,7 @@ elif echo "${changed_service_list[@]}" | egrep -q "service|trigger"; then
             function_name=$(echo $file | cut -d '/' -f 2)
             
             # Template file
-            buildfile=${function_name}/${function_name}.yaml
+            buildfile=./src/${function_name}/${function_name}.yaml
             ls -ltr $buildfile
             echo $buildfile
             # Build the function which is changed
@@ -97,7 +97,7 @@ elif echo "${changed_service_list[@]}" | egrep -q "service|trigger"; then
             echo "-----------------------------------------------------------"
 
             # Template file 
-            deployfile=${function_name}/${function_name}-config.toml
+            deployfile=./src/${function_name}/${function_name}-config.toml
             ls -ltr $deployfile
             echo $deployfile
             # Deploy the function which is changed
