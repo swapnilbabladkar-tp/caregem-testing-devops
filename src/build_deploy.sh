@@ -43,7 +43,7 @@ if echo "${changed_service_list[@]}" | grep -q "layers"; then
 
         # Template file 
         buildfile=${service_name}/${service_name}.yaml
-        ls -ltr $buildfile
+        ls -ltr ./src/$buildfile
         echo $buildfile
         # Deploy all functions one-by-one
         echo "----------------------------------------------------"
@@ -56,7 +56,7 @@ if echo "${changed_service_list[@]}" | grep -q "layers"; then
 
         # Template file
         deployfile=${service_name}/${service_name}-config.toml
-        ls -ltr $deployfile
+        ls -ltr ./src/$deployfile
         echo $deployfile
         # Deploy all functions one-by-one
         echo "----------------------------------------------------"
