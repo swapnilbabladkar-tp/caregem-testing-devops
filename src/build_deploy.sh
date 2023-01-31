@@ -23,57 +23,59 @@ git_details(){
 
 }
 
-run_build(){
+run_build_deploy(){
 
-if echo "${changed_service_list[@]}" | grep -q "layers"; then
-    echo "BUILDING ALL SERVICES"
+    if echo "${changed_service_list[@]}" | grep -q "layers"; then
+        echo "BUILDING ALL SERVICES"
 
-    # Run only for service and trigger functions
-    pattern1="*-service"
-    pattern2="*-trigger"
-    folders1=$(find . -type d -name "$pattern1")
-    folders2=$(find . -type d -name "$pattern2")
-    folders="$folders1 $folders2"
-    list_folders=$(echo "$folders" | sed 's/src//g' | sed 's/\.//g' | sed 's/\///g')
+        # Run only for service and trigger functions
+        pattern1="*-service"
+        pattern2="*-trigger"
+        folders1=$(find . -type d -name "$pattern1")
+        folders2=$(find . -type d -name "$pattern2")
+        folders="$folders1 $folders2"
+        list_folders=$(echo "$folders" | sed 's/src//g' | sed 's/\.//g' | sed 's/\///g')
 
-    for service_name in ${list_folders[@]}; do
+        for service_name in ${list_folders[@]}; do
 
-        # Build file
-        buildfile=./src/${service_name}/${service_name}.yaml
-        sam_build $service_name $buildfile
-
-        # Deploy file
-        deployfile=./src/${service_name}/${service_name}-config.toml
-        sam_build $service_name $deployfile
-
-    done
-    exit
-elif echo "${changed_service_list[@]}" | egrep -q "service|trigger"; then
-    echo "BUILDING ONLY CHANGED SERVICES - ${changed_service_list[@]}"
-    for file in "${changed_service_list[@]}"; do
-        if echo $file | egrep -q "migration|iac|scripts|bin|aws_scripts"; then
-            echo "----------------------------------------------------"
-            echo "Build not applicable for service $file"
-            echo "----------------------------------------------------"
-        else
-            function_name=$(echo $file | cut -d '/' -f 2)
-            
             # Build file
-            buildfile=./src/${function_name}/${function_name}.yaml
-            sam_build $function_name $buildfile
+            buildfile=./src/${service_name}/${service_name}.yaml
+            sam_build $service_name $buildfile
 
-            # Deploy file 
-            deployfile=./src/${function_name}/${function_name}-config.toml
-            sam_deploy $function_name $deployfile
+            # Deploy file
+            deployfile=./src/${service_name}/${service_name}-config.toml
+            sam_deploy $service_name $deployfile
+            cleanup $service_name
 
-            # Clean up
-            cleanup $function_name
-        fi
-    done
-else
-    echo ${changed_service_list[@]}
-    echo "NO BACKENDSERVICE MODIFIED"    
-fi
+        done
+        exit
+    elif echo "${changed_service_list[@]}" | egrep -q "service|trigger"; then
+        echo "BUILDING ONLY CHANGED SERVICES - ${changed_service_list[@]}"
+        
+        for file in "${changed_service_list[@]}"; do
+            if echo $file | egrep -q "migration|iac|scripts|bin|aws_scripts"; then
+                echo "----------------------------------------------------"
+                echo "Build not applicable for service $file"
+                echo "----------------------------------------------------"
+            else
+                service_name=$(echo $file | cut -d '/' -f 2)
+                
+                # Build file
+                buildfile=./src/${service_name}/${service_name}.yaml
+                sam_build $service_name $buildfile
+
+                # Deploy file 
+                deployfile=./src/${service_name}/${service_name}-config.toml
+                sam_deploy $service_name $deployfile
+
+                # Clean up
+                cleanup $service_name
+            fi
+        done
+    else
+        echo ${changed_service_list[@]}
+        echo "NO BACKENDSERVICE MODIFIED"    
+    fi
 
 }
 
@@ -102,43 +104,44 @@ git_details(){
 
 sam_build(){
 
-    function_name=$1
+    service_name=$1
     buildfile=$2
     ls -ltr $buildfile
     echo "-----------------------------------------------------------"
-    echo "| Status - Building | $function_name "
+    echo "| Status - Building | $service_name "
     echo "-----------------------------------------------------------"
 #    sam build -t $buildfile --parallel
     echo "-----------------------------------------------------------"
-    echo "| Status - Build Completed | $function_name "
+    echo "| Status - Build Completed | $service_name "
     echo "-----------------------------------------------------------"
 }
 
 sam_deploy(){
     
     # Variable
-    function_name=$1
+    service_name=$1
     deployfile=$2
     ls -ltr $deployfile
-    echo "--------------------------------------------------------------"
-    echo "| Status - Deploying | $function_name "
-    echo "--------------------------------------------------------------"
+    echo "-----------------------------------------------------------"
+    echo "| Status - Deploying | $service_name "
+    echo "-----------------------------------------------------------"
 : '    sam deploy \
     --config-file $deployfile \
-    --stack-name $function_name \
+    --stack-name $service_name \
     --s3-bucket $SAM_CLI_SOURCE_BUCKET \
     --no-confirm-changeset --no-fail-on-empty-changeset '
-    echo "--------------------------------------------------------------"
-    echo "| Status - Deployment Completed| $function_name "
-    echo "--------------------------------------------------------------"
+    echo "-----------------------------------------------------------"
+    echo "| Status - Deployment Completed| $service_name "
+    echo "-----------------------------------------------------------"
 }
 
 cleanup(){
-    echo "Cleaning up build artifacts for $1 ..."
+    service_name=$1
+    echo "Cleaning up build artifacts for $service_name ..."
     file_path="./.aws-sam"
     if [ -f "$file_path" ]; then
         rm -r "$file_path"
-        echo "Clean up completed"
+        echo "Clean up completed for $service_name"
     else
         echo "Nothing to clean up"
     fi
@@ -149,9 +152,9 @@ start=$(date +%s)
 git_details
 
 #LOCAL TESTING
-changed_service_list=("layers")
+changed_service_list=("misc-service" "notification-service")
 
-run_build
+run_build_deploy
 end=$(date +%s)
 echo "-----------------------------------------------------------"
 echo "Elapsed Time: $(($end-$start)) seconds"
