@@ -1,5 +1,0 @@
-{
-  "path": " /patient/alerttrend/{patient_id}",
-  "httpMethod": "GET",
-  "pathParameters": {"patient_internal_id": "75"}
-}

@@ -1,3 +1,0 @@
-{"queryStringParameters": {"Medication": {"Ingredient":[],"PatientId":"75","PrescribedBy":"69","PrescribedDate":"2021-03-26 02:49","Prn":"N","ProductId":"1437702","ProductLongName":"albuterol 0.833 MG/ML / ipratropium bromide 0.167 MG/ML Inhalation Solution","ProductShortName":"albuterol 0.833 MG/ML / ipratropium bromide 0.167 MG/ML Inhalation Solution","Quantity":"2","Sig":"3x daily","Status":"A","UnitCode":"ml","UnitStrength":"","Duration":"2x day","InfoFrom":"Patient","SigExtraNote":"Every evening and night take the medicine."}},
-"path": "/save/{patient_id}",
-"pathParameters": {"patient_id": "288"}}
