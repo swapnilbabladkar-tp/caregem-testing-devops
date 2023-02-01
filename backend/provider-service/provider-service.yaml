@@ -1,0 +1,214 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  provider-service
+
+  SAM Template for provider-service
+
+Parameters:
+  PrivateSubnets:
+    Type: 'AWS::SSM::Parameter::Value<List<String>>'
+    Default: /caregem/VpcSubnet
+  LambdaSecurityGroupId:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/VpcSg
+  AuthorizerLambdaArn:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/AuthorizerLambdaArn
+  Stage:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/Stage
+  CognitoUserPool:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/CognitoUserPool
+  AwsRegion:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/AwsRegion
+  UserProfileTableName:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/UserProfileTableName
+  MysqlSecret:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/MysqlSecret
+  MlprepMysqlSecret:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/MlprepMysqlSecret
+  AccessLogArn:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Description: AccessLogArn
+    Default: /caregem/AccessLogArn
+  ChimeInstanceArn:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/ChimeInstanceArn
+  MessageSecret:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /caregem/MessageSecret
+
+Globals:
+  Function:
+    Timeout: 5
+    MemorySize: 512
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroupId
+      SubnetIds: !Ref PrivateSubnets
+    Environment:
+      Variables:
+        LOG_LEVEL: 'INFO'
+        DB_SECRET_NAME: !Ref MysqlSecret
+        MLPREP_SECRET_NAME: !Ref MlprepMysqlSecret
+        DYNAMODB_REGION: !Ref AwsRegion
+        AWSREGION: !Ref AwsRegion
+        USER_POOL_REGION: !Ref AwsRegion
+        USER_PROFILE_TABLE_NAME: !Ref UserProfileTableName
+        USER_POOL_ID: !Ref CognitoUserPool
+        CHIME_INSTANCE_ARN: !Ref ChimeInstanceArn
+  Api:
+    EndpointConfiguration: REGIONAL
+    TracingEnabled: true
+    OpenApiVersion: '2.0'
+    Cors:
+      AllowMethods: "'OPTIONS,POST,GET,PUT'"
+      AllowHeaders: "'Content-Type,Authorization'"
+      AllowOrigin: "'*'"
+
+Resources:
+  UtilsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ../layers/utilLayer
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+
+  ProviderApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      Name: ProviderApi
+      Description: Provider Service
+      Auth:
+        AddDefaultAuthorizerToCorsPreflight: false
+        DefaultAuthorizer: LambdaTokenAuthorizer
+        Authorizers:
+          LambdaTokenAuthorizer:
+            FunctionArn: !Ref AuthorizerLambdaArn
+      AccessLogSetting:
+        DestinationArn: !Ref AccessLogArn
+        Format: '{
+          "requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod", "path":"$context.path", "resourcePath":"$context.resourcePath", "status":"$context.status", "responseLatency":"$context.responseLatency",
+          "integrationRequestId":"$context.integration.requestId", "functionResponseStatus":"$context.integration.status", "authorizeResultStatus":"$context.authorize.status", "authorizerServiceStatus":"$context.authorizer.status",
+          "authorizerRequestId":"$context.authorizer.requestId","authorizeError":"$context.authorize.error", "claims": "$context.authorizer.claims",
+          "ip":"$context.identity.sourceIp", "userAgent":"$context.identity.userAgent", "principalId":"$context.authorizer.principalId", "cognitoUser":"$context.identity.cognitoIdentityId", "user":"$context.identity.user",
+          "apiId":"$context.apiId"
+        }'
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: caregem-secret-manager-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: '*'
+        - PolicyName: caregem-cognito-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminGetUser
+                Resource: '*'
+        - PolicyName: caregem-dynamodb-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:BatchGetItem
+                Resource: '*'
+        - PolicyName: caregem-chime-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - chime:ListChannelMessages
+                Resource: '*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  ProviderListing:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: Provider-Listing-Lambda
+      CodeUri: ./
+      Handler: provider_listing.lambda_handler
+      Timeout: 15
+      Layers:
+        - !Ref UtilsLayer
+      Role: !GetAtt LambdaRole.Arn
+      Events:
+        PhysicianList:
+          Type: Api
+          Properties:
+            Path: /provider/physicians
+            Method: GET
+            RestApiId: !Ref ProviderApi
+        NursesList:
+          Type: Api
+          Properties:
+            Path: /provider/nurses
+            Method: GET
+            RestApiId: !Ref ProviderApi
+        CaseManagersList:
+          Type: Api
+          Properties:
+            Path: /provider/case_managers
+            Method: GET
+            RestApiId: !Ref ProviderApi
+
+  ProviderProfile:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: Provider-Profile-Lambda
+      CodeUri: ./
+      Handler: provider_profile.lambda_handler
+      Layers:
+        - !Ref UtilsLayer
+      Role: !GetAtt LambdaRole.Arn
+      Events:
+        ProviderProfile:
+          Type: Api
+          Properties:
+            Path: /provider/providers/{provider_id}
+            Method: GET
+            RestApiId: !Ref ProviderApi
+      Environment:
+        Variables:
+          ENCRYPTION_KEY_SECRET_ID: !Ref MessageSecret
+
+Outputs:
+  ProviderApi:
+    Description: 'API Gateway endpoint URL for NonProd stage for Provider Service'
+    Value: !Sub 'https://${ProviderApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}'

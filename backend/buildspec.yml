@@ -12,4 +12,4 @@ phases:
       - PREVIOUS_COMMIT=$(git rev-parse HEAD~1)
   build:
     commands:
-      - bash backend/build-deploy.sh $CURRENT_COMMIT $PREVIOUS_COMMIT
+      - bash src/build_deploy.sh $CURRENT_COMMIT $PREVIOUS_COMMIT

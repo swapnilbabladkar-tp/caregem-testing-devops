@@ -1,0 +1,25 @@
+version = 0.1
+[dev]
+[dev.deploy]
+[dev.deploy.parameters]
+stack_name = "sam-medication-service"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-10ghuq43w5w9b"
+s3_prefix = "sam-medication-service"
+region = "us-east-2"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "PrivateSubnets=\"subnet-04e151699aa86c464,subnet-02a7c6ca7897b39d6\" LambdaSecurityGroupId=\"sg-0ef323b9528c97c70\" AuthorizerLambdaArn=\"arn:aws:lambda:us-east-2:455743001475:function:CustomAuthorizerLambda\""
+image_repositories = []
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "user-service"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1fijtwp6d3ksr"
+s3_prefix = "user-service"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "PrivateSubnets=\"/caregem/VpcSubnet\" LambdaSecurityGroupId=\"/caregem/VpcSg\" AuthorizerLambdaArn=\"/caregem/AuthorizerLambdaArn\" Stage=\"/caregem/Stage\" CognitoUserPool=\"/caregem/CognitoUserPool\" AwsRegion=\"/caregem/AwsRegion\" UserProfileTableName=\"/caregem/UserProfileTableName\" MysqlSecret=\"/caregem/MysqlSecret\" AccessLogArn=\"/caregem/AccessLogArn\""
+image_repositories = []
+disable_rollback = true
